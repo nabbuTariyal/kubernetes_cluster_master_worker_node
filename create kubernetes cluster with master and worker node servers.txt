@@ -1,0 +1,63 @@
+#Creating kubernetes infra for master node and worker nodes physical separately
+
+#Install therse softwares and steps on each server
+
+work as a root user (switch from normal user to root
+sudo -i
+
+apt-get update
+apt-get upgrade
+apt-get install curl -y
+apt-get install openjdk-8-jre-headless
+apt-get install python -y
+apt-get install python3-pip -y
+apt-get install git -y
+apt-get install docker.io -y
+apt-get install docker-compose -y
+
+for installing kubernetes
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add
+sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+sudo apt-get install kubeadm kubelet kubectl
+sudo apt-mark hold kubeadm kubelet kubectl
+
+#Clear the swap memoty on bother servers
+sudo swapoff --a
+
+#Create a hostname on bother servers
+#run below cmd on master-node server
+sudo hostnamectl set-hostname master-node
+
+#run below cmd on worker-node server
+sudo hostnamectl set-hostname worker-node
+
+
+#Initialize the kubernetes on master server
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+
+#Run below cmds on master server
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+#Deploy pod network to cluster (run below cmd on master server) [A Pod Network is a way to allow communication between different nodes in the cluster. This tutorial uses the flannel virtual network.]
+sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+#To verify and check everything is working and see the pods
+#Run below cmd on master server
+kubectl get pods --all-namespaces
+
+
+#We need to join the worker node to cluster
+run the below cmd to join the master node (sample given below ) [actual cmd below cmd you get from master server only while kubeadm init time note that , same join can be used with other worker nodes to join the cluster with master node]
+kubeadm join 192.168.206.128:6443 --token j74t9g.op2ylrnvidxlksr4 \
+	--discovery-token-ca-cert-hash sha256:fe8a54fcccae9f9aefdb7632f8c7248b762a9f936610cbf390442181a7f329ef 
+
+
+
+##Come back to master node to check if worker node joins the cluster run below cmd on master-node
+kubectl get nodes
+
+
+
